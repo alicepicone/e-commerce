@@ -3,9 +3,6 @@ services:
     image: mysql:latest
     networks:
       - test-network
-    environment:
-       MYSQL_ROOT_PASSWORD: dev
-       MYSQL_DATABASE: e-commerce
     ports:
       - "3307:3306"
     volumes:
