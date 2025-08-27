@@ -72,6 +72,41 @@ public class ProdottoServiceImpl implements ProdottoService {
         prodottoRepository.deleteById(id);
     }
 
+    public ProdottoResponse aggiornaProdotto(Long id, ProdottoRequest prodottoRequest) {
+
+        Prodotto prodotto = getProdottoById(Math.toIntExact(id))
+                .orElseThrow(() -> new RuntimeException("Prodotto non trovato con id: " + id));
+
+        if (prodottoRequest.getName() != null && !prodottoRequest.getName().isBlank()) {
+            prodotto.setName(prodottoRequest.getName());
+        }
+
+        if (prodottoRequest.getCategory() != null && !prodottoRequest.getCategory().isBlank()) {
+            prodotto.setCategory(prodottoRequest.getCategory());
+        }
+
+        if (prodottoRequest.getDescription() != null && !prodottoRequest.getDescription().isBlank()) {
+            prodotto.setDescription(prodottoRequest.getDescription());
+        }
+
+        if (prodottoRequest.getPrice() != null && !prodottoRequest.getPrice().isBlank()) {
+            try {
+                prodotto.setPrice(Double.parseDouble(prodottoRequest.getPrice()));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Il prezzo fornito non è un numero valido.");
+            }
+        }
+
+        if (prodottoRequest.getImage() != null && !prodottoRequest.getImage().isEmpty()) {
+            String nomeFileImmagine = salvaImmagine(prodottoRequest.getImage());
+            prodotto.setImage(nomeFileImmagine);
+        }
+
+        Prodotto prodottoAggiornato = prodottoRepository.save(prodotto);
+
+        return prodottoDTOMapper.apply(prodottoAggiornato);
+    }
+
     private String salvaImmagine(MultipartFile file) {
         if (file.isEmpty()) {
             return null;
