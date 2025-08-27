@@ -17,4 +17,5 @@ public interface ProdottoService {
 
     void cancellaProdotto(int id);
 
+    ProdottoResponse aggiornaProdotto(Long id, ProdottoRequest prodottoRequest);
 }

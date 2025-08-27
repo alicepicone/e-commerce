@@ -35,4 +35,12 @@ public class ProdottoController {
         prodottoService.cancellaProdotto(id);
     }
 
+    @PatchMapping(value = "/{id}", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    public ProdottoResponse aggiornaProdotto(
+            @PathVariable long id,
+            @ModelAttribute ProdottoRequest prodottoRequest) {
+
+        return prodottoService.aggiornaProdotto(id, prodottoRequest);
+    }
+
 }

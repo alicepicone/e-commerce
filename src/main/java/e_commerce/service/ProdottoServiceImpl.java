@@ -7,12 +7,16 @@ import e_commerce.model.Prodotto;
 import e_commerce.repository.ProdottoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Base64;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -21,6 +25,9 @@ public class ProdottoServiceImpl implements ProdottoService {
 
     private final ProdottoRepository prodottoRepository;
     private final ProdottoDTOMapper prodottoDTOMapper;
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;
 
     @Override
     public List<Prodotto> getProdotti() {
@@ -48,18 +55,8 @@ public class ProdottoServiceImpl implements ProdottoService {
             throw new IllegalArgumentException("Il prezzo fornito non è un numero valido.");
         }
 
-        MultipartFile imagine = prodottoRequest.getImage();
-        if (imagine != null && !imagine.isEmpty()) {
-            try {
-                String formato = imagine.getContentType();
-                String immagineCodificata = "data:" + formato + ";base64," +
-                        Base64.getEncoder().encodeToString(imagine.getBytes());
-                prodotto.setImage(immagineCodificata);
-            } catch (Exception e) {
-                log.error("Errore durante la codifica dell'immagine: {}", e.getMessage());
-                throw new RuntimeException("Impossibile elaborare il file dell'immagine.", e);
-            }
-        }
+        String nomeFileImmagine = salvaImmagine(prodottoRequest.getImage());
+        prodotto.setImage(nomeFileImmagine);
 
         Prodotto prodottoSalvato = prodottoRepository.save(prodotto);
 
@@ -75,4 +72,61 @@ public class ProdottoServiceImpl implements ProdottoService {
         prodottoRepository.deleteById(id);
     }
 
+    public ProdottoResponse aggiornaProdotto(Long id, ProdottoRequest prodottoRequest) {
+
+        Prodotto prodotto = getProdottoById(Math.toIntExact(id))
+                .orElseThrow(() -> new RuntimeException("Prodotto non trovato con id: " + id));
+
+        if (prodottoRequest.getName() != null && !prodottoRequest.getName().isBlank()) {
+            prodotto.setName(prodottoRequest.getName());
+        }
+
+        if (prodottoRequest.getCategory() != null && !prodottoRequest.getCategory().isBlank()) {
+            prodotto.setCategory(prodottoRequest.getCategory());
+        }
+
+        if (prodottoRequest.getDescription() != null && !prodottoRequest.getDescription().isBlank()) {
+            prodotto.setDescription(prodottoRequest.getDescription());
+        }
+
+        if (prodottoRequest.getPrice() != null && !prodottoRequest.getPrice().isBlank()) {
+            try {
+                prodotto.setPrice(Double.parseDouble(prodottoRequest.getPrice()));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Il prezzo fornito non è un numero valido.");
+            }
+        }
+
+        if (prodottoRequest.getImage() != null && !prodottoRequest.getImage().isEmpty()) {
+            String nomeFileImmagine = salvaImmagine(prodottoRequest.getImage());
+            prodotto.setImage(nomeFileImmagine);
+        }
+
+        Prodotto prodottoAggiornato = prodottoRepository.save(prodotto);
+
+        return prodottoDTOMapper.apply(prodottoAggiornato);
+    }
+
+    private String salvaImmagine(MultipartFile file) {
+        if (file.isEmpty()) {
+            return null;
+        }
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String uniqueFilename = UUID.randomUUID().toString() + "_" + originalFilename;
+
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            Path filePath = uploadPath.resolve(uniqueFilename);
+            Files.copy(file.getInputStream(), filePath);
+
+            return uniqueFilename;
+        } catch (Exception e) {
+            log.error("Impossibile salvare il file: {}", e.getMessage());
+            throw new RuntimeException("Impossibile salvare il file caricato: " + file.getOriginalFilename(), e);
+        }
+    }
 }
