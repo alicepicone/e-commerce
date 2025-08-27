@@ -22,8 +22,6 @@ public class Prodotto {
 
     private String description;
 
-    @Lob
-    @Column(name = "image", columnDefinition="MEDIUMTEXT")
     private String image;
 
     private double price;
